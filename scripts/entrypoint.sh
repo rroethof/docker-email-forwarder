@@ -65,7 +65,9 @@ id spamd &>/dev/null || useradd -r -s /bin/false spamd
 mkdir -p /var/lib/spamassassin/bayes
 chown -R spamd:spamd /var/lib/spamassassin
 
-spamd \
+SPAMD_BIN="$(command -v spamd || echo /usr/sbin/spamd)"
+
+$SPAMD_BIN \
     --daemonize \
     --pidfile=/var/run/spamd.pid \
     --username=spamd \

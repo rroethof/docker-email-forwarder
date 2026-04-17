@@ -11,12 +11,16 @@ RUN apt-get update && apt-get install -y --no-install-recommends \
     postfix-pcre \
     spamassassin \
     spamc \
+    spamd \
     libmail-spf-perl \
     postfix-policyd-spf-perl \
     rsyslog \
     ca-certificates \
     dnsutils \
     && rm -rf /var/lib/apt/lists/*
+
+RUN ln -s /usr/sbin/spamd /usr/bin/spamd || true
+RUN chown -R postfix:postfix /var/spool/postfix || true
 
 # SpamAssassin: update rules at build time
 RUN sa-update --no-gpg || true
