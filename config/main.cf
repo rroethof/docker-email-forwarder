@@ -1,0 +1,90 @@
+# =============================================================
+#  MAIL GATEWAY — main.cf
+#  Postfix + SpamAssassin + RBL + SPF + Virtual aliases
+# =============================================================
+
+# ── Identity ──────────────────────────────────────────────────
+myhostname      = ${MYHOSTNAME:-mail.example.com}
+mydomain        = ${MYDOMAIN:-example.com}
+myorigin        = $mydomain
+
+# ── Network ───────────────────────────────────────────────────
+inet_interfaces = all
+inet_protocols  = ipv4
+mynetworks      = 127.0.0.0/8 [::ffff:127.0.0.0]/104 [::1]/128
+
+# ── Relay / routing ───────────────────────────────────────────
+# Domains for which we ACCEPT mail (forward to relay host)
+relay_domains   = ${RELAY_DOMAINS:-example.com}
+
+# Upstream SMTP server to forward clean mail to
+relayhost       = ${RELAYHOST:-[127.0.0.1]:10025}
+
+# ── Virtual alias map (file-based, /config/virtual) ───────────
+virtual_alias_maps  = hash:/config/virtual
+
+# ── TLS (opportunistic) ───────────────────────────────────────
+smtpd_tls_security_level        = may
+smtp_tls_security_level         = may
+smtpd_tls_auth_only             = no
+smtp_tls_loglevel               = 1
+smtpd_tls_loglevel              = 1
+smtpd_tls_cert_file             = ${TLS_CERT_FILE:-/etc/ssl/certs/ssl-cert-snakeoil.pem}
+smtpd_tls_key_file              = ${TLS_KEY_FILE:-/etc/ssl/private/ssl-cert-snakeoil.key}
+
+# ── SMTP restrictions ─────────────────────────────────────────
+smtpd_helo_required             = yes
+smtpd_helo_restrictions         =
+    permit_mynetworks,
+    reject_invalid_helo_hostname,
+    reject_non_fqdn_helo_hostname
+
+smtpd_sender_restrictions       =
+    permit_mynetworks,
+    reject_non_fqdn_sender,
+    reject_unknown_sender_domain
+
+smtpd_recipient_restrictions    =
+    permit_mynetworks,
+    reject_unauth_destination,
+    reject_non_fqdn_recipient,
+    reject_unknown_recipient_domain,
+    # ── RBL checks (Spamhaus + SpamCop) ──
+    reject_rbl_client zen.spamhaus.org,
+    reject_rbl_client bl.spamcop.net,
+    reject_rbl_client b.barracudacentral.org,
+    # ── SPF policy check ──
+    check_policy_service unix:private/policyd-spf,
+    permit
+
+smtpd_data_restrictions         =
+    reject_unauth_pipelining,
+    permit
+
+# ── SPF policy daemon ─────────────────────────────────────────
+policyd-spf_time_limit          = 3600
+
+# ── Content filters ───────────────────────────────────────────
+# Pipe through SpamAssassin via spamfilter wrapper
+content_filter                  = spamfilter:dummy
+
+# Header / body checks
+header_checks                   = pcre:/etc/postfix/header_checks
+body_checks                     = pcre:/etc/postfix/body_checks
+
+# ── Timeouts & limits ─────────────────────────────────────────
+smtpd_timeout                   = 300s
+smtp_connect_timeout            = 30s
+maximal_queue_lifetime          = 5d
+bounce_queue_lifetime           = 1d
+message_size_limit              = 52428800   # 50 MB
+
+# ── Logging ───────────────────────────────────────────────────
+# syslog goes to rsyslog → /var/log/mail-gateway/mail.log
+syslog_name                     = postfix
+
+# ── Misc ──────────────────────────────────────────────────────
+biff                            = no
+append_dot_mydomain             = no
+readme_directory                = no
+compatibility_level             = 3.6

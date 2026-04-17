@@ -1,0 +1,73 @@
+services:
+  mail-gateway:
+    build: .
+    container_name: mail-gateway
+    restart: unless-stopped
+
+    # ── Ports ────────────────────────────────────────────────
+    ports:
+      - "25:25"      # SMTP inbound
+      - "587:587"    # Submission (authorized senders)
+
+    # ── Environment ──────────────────────────────────────────
+    environment:
+      # Identity
+      MYHOSTNAME:          mail.example.com
+      MYDOMAIN:            example.com
+
+      # Relay — domains we accept mail for
+      RELAY_DOMAINS:       example.com example.org
+
+      # Forward clean mail to this host (your internal MTA / IMAP)
+      RELAYHOST:           "[mail-internal]:25"
+
+      # TLS certificates (mount your own, or use snakeoil for testing)
+      TLS_CERT_FILE:       /etc/ssl/certs/ssl-cert-snakeoil.pem
+      TLS_KEY_FILE:        /etc/ssl/private/ssl-cert-snakeoil.key
+
+      # SpamAssassin
+      SPAM_SCORE_THRESHOLD: "5.0"
+      # tag   = deliver with X-Spam headers (default)
+      # drop  = silently discard spam
+      # quarantine = save to /var/log/mail-gateway/quarantine/
+      SPAM_ACTION:          tag
+
+      # Watch /config/virtual for changes and auto-reload
+      AUTO_POSTMAP:         "true"
+
+    # ── Volumes ───────────────────────────────────────────────
+    volumes:
+      # Live-edit aliases without rebuilding:
+      - ./config/virtual:/config/virtual
+
+      # Persistent logs
+      - mail-logs:/var/log/mail-gateway
+
+      # Persistent SpamAssassin Bayes DB
+      - sa-bayes:/var/lib/spamassassin
+
+      # Optional: mount your own TLS cert/key
+      # - /etc/letsencrypt/live/mail.example.com/fullchain.pem:/etc/ssl/mail/cert.pem:ro
+      # - /etc/letsencrypt/live/mail.example.com/privkey.pem:/etc/ssl/mail/key.pem:ro
+
+    # ── DNS — needed for RBL lookups ─────────────────────────
+    dns:
+      - 8.8.8.8
+      - 1.1.1.1
+
+    # ── Capabilities for Postfix chroot ──────────────────────
+    cap_add:
+      - NET_BIND_SERVICE
+      - SYS_CHROOT
+
+    # ── Health check ─────────────────────────────────────────
+    healthcheck:
+      test: ["CMD", "bash", "-c", "echo QUIT | nc -w3 localhost 25 | grep -q '220'"]
+      interval: 30s
+      timeout: 10s
+      retries: 3
+      start_period: 15s
+
+volumes:
+  mail-logs:
+  sa-bayes:

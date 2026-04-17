@@ -1,0 +1,55 @@
+# =============================================================
+#  MAIL GATEWAY — SpamAssassin local.cf
+# =============================================================
+
+# ── Score threshold ───────────────────────────────────────────
+# Mails scoring >= required_score are marked as spam
+required_score          5.0
+
+# ── Actions ───────────────────────────────────────────────────
+# Add X-Spam-* headers to every message
+report_safe             0        # 0 = add headers, don't encapsulate
+add_header all Status   _YESNO_, score=_SCORE_ required=_REQD_ tests=_TESTS_
+add_header spam Flag    _YESNOCAPS_
+rewrite_header Subject  [SPAM] _SUBJECT_
+
+# ── Bayes classifier ──────────────────────────────────────────
+use_bayes               1
+bayes_auto_learn        1
+bayes_auto_learn_threshold_nonspam  0.1
+bayes_auto_learn_threshold_spam     12.0
+bayes_path              /var/lib/spamassassin/bayes/bayes
+
+# ── Network tests (RBL inside SA — Spamhaus SBL/XBL/PBL) ──────
+use_razor2              0        # Razor2 not installed by default
+use_pyzor               0        # Pyzor  not installed by default
+use_dcc                 0        # DCC    not installed by default
+
+# Enable DNS-based tests
+skip_rbl_checks         0
+dns_available           yes
+
+# Spamhaus DBL (domain block list)
+urirhssub   URIBL_DBL_SPAM   dbl.spamhaus.org.   A  2
+body        URIBL_DBL_SPAM   eval:check_uridnsbl('URIBL_DBL_SPAM')
+describe    URIBL_DBL_SPAM   Contains a domain listed in Spamhaus DBL spam
+tflags      URIBL_DBL_SPAM   net
+score       URIBL_DBL_SPAM   3.0
+
+# ── Whitelist / Blacklist overrides ───────────────────────────
+# whitelist_from  trusted@example.com
+# blacklist_from  spammer@badomain.com
+
+# ── Score tweaks ──────────────────────────────────────────────
+score HTML_MESSAGE              0.1
+score MIME_HTML_ONLY            1.5
+score MISSING_SUBJECT           2.0
+score EMPTY_MESSAGE             5.0
+score FROM_EXCESS_BASE64        2.0
+
+# ── Trusted networks (don't test your own relay) ──────────────
+trusted_networks        127.0.0.0/8
+internal_networks       127.0.0.0/8
+
+# ── Logging ───────────────────────────────────────────────────
+# SA logs go to syslog; pick up by rsyslog

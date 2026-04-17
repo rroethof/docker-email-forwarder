@@ -1,0 +1,23 @@
+# =============================================================
+#  MAIL GATEWAY — /config/virtual
+#
+#  Format:  <source-address>    <destination-address>
+#
+#  After editing this file, run inside the container:
+#    postmap /config/virtual && postfix reload
+#
+#  OR set AUTO_POSTMAP=true in docker-compose (entrypoint watches it).
+# =============================================================
+
+# ── Domain catch-all ──────────────────────────────────────────
+# @example.com          admin@internal.example.com
+
+# ── Individual aliases ────────────────────────────────────────
+info@example.com        helpdesk@internal.example.com
+abuse@example.com       security@internal.example.com, admin@internal.example.com
+postmaster@example.com  admin@internal.example.com
+hostmaster@example.com  admin@internal.example.com
+noreply@example.com     /dev/null
+
+# ── Mailing list expansion ────────────────────────────────────
+# team@example.com      alice@internal.example.com, bob@internal.example.com
